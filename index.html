@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101216" />
+  <title>Focus Frame — 이미지 초점 편집기</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d0f13;
+      --panel: rgba(26, 29, 36, 0.9);
+      --panel-2: rgba(255, 255, 255, 0.055);
+      --line: rgba(255, 255, 255, 0.12);
+      --text: #f6f7fb;
+      --muted: #a5a9b4;
+      --accent: #ffffff;
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      min-height: 100%;
+      margin: 0;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(255,255,255,0.08), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      font-family: Pretendard, "Apple SD Gothic Neo", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select { font: inherit; }
+
+    body { overflow-x: hidden; }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(310px, 360px) minmax(0, 1fr);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 24px 20px 40px;
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      backdrop-filter: blur(22px);
+      z-index: 5;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      font-weight: 730;
+    }
+
+    .brand p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .live-dot {
+      width: 9px;
+      height: 9px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: #fff;
+      box-shadow: 0 0 0 5px rgba(255,255,255,0.08), 0 0 22px rgba(255,255,255,0.4);
+    }
+
+    .upload {
+      display: block;
+      width: 100%;
+      padding: 14px 15px;
+      margin-bottom: 14px;
+      border: 1px dashed rgba(255,255,255,0.24);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.045);
+      color: var(--text);
+      text-align: center;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .upload:hover {
+      border-color: rgba(255,255,255,0.48);
+      background: rgba(255,255,255,0.075);
+    }
+
+    .upload strong { font-size: 13px; }
+    .upload span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .upload input { display: none; }
+
+    .section {
+      margin-top: 12px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel-2);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 13px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: #e9eaf0;
+    }
+
+    .control { margin-top: 14px; }
+    .control:first-of-type { margin-top: 0; }
+
+    .label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .value {
+      min-width: 44px;
+      text-align: right;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      margin: 0;
+      accent-color: #fff;
+      cursor: pointer;
+    }
+
+    select,
+    input[type="color"] {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: rgba(7, 8, 12, 0.7);
+      color: var(--text);
+      padding: 0 11px;
+      outline: none;
+    }
+
+    input[type="color"] {
+      padding: 4px;
+      cursor: pointer;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 38px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .switch {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      flex: 0 0 auto;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .switch span {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.13);
+      transition: 0.2s ease;
+      cursor: pointer;
+    }
+
+    .switch span::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      top: 3px;
+      left: 3px;
+      border-radius: 50%;
+      background: #fff;
+      transition: 0.2s ease;
+    }
+
+    .switch input:checked + span { background: rgba(255,255,255,0.42); }
+    .switch input:checked + span::after { transform: translateX(18px); }
+
+    .focus-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .focus-card {
+      padding: 13px;
+      border: 1px solid rgba(255,255,255,0.11);
+      border-radius: 14px;
+      background: rgba(5,7,11,0.28);
+      transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+    }
+
+    .focus-card.active {
+      border-color: rgba(255,255,255,0.34);
+      background: rgba(255,255,255,0.075);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    .focus-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .focus-card-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 12px;
+      font-weight: 720;
+      color: #f2f3f7;
+    }
+
+    .focus-card-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.1);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .focus-card-position {
+      color: var(--muted);
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .focus-card .control { margin-top: 11px; }
+    .focus-card .control:first-of-type { margin-top: 0; }
+
+    .mini-btn {
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 9px;
+      font-size: 10px;
+      color: #dfe1e7;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    button {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.07);
+      color: var(--text);
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    button:hover { background: rgba(255,255,255,0.11); border-color: rgba(255,255,255,0.22); }
+    button:active { transform: scale(0.98); }
+
+    .primary {
+      grid-column: 1 / -1;
+      background: #f4f5f7;
+      color: #101216;
+      border-color: #f4f5f7;
+      font-weight: 760;
+    }
+
+    .primary:hover { background: #fff; border-color: #fff; }
+
+    .stage {
+      min-width: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 42px;
+    }
+
+    .workspace {
+      width: min(100%, 1120px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .preview-shell {
+      --preview-ratio: 1;
+      width: min(100%, 860px, calc((100vh - 120px) * var(--preview-ratio)));
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.11);
+      border-radius: 24px;
+      background: rgba(255,255,255,0.04);
+      box-shadow: 0 30px 90px rgba(0,0,0,0.38);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: calc(100vh - 120px);
+      object-fit: contain;
+      border-radius: 13px;
+      background: #17191e;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: crosshair;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    .hint {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .kbd {
+      padding: 2px 7px;
+      border: 1px solid var(--line);
+      border-bottom-color: rgba(255,255,255,0.25);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.06);
+      color: #e5e6eb;
+      font-size: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 26px;
+      transform: translate(-50%, 16px);
+      padding: 10px 14px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 999px;
+      background: rgba(13,15,19,0.9);
+      color: #fff;
+      font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: 0.22s ease;
+      backdrop-filter: blur(16px);
+      z-index: 20;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 920px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        position: relative;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .stage { min-height: auto; padding: 22px 14px 50px; }
+      .preview-shell { width: min(100%, 860px); }
+      canvas { max-height: none; }
+    }
+
+    @media (max-width: 520px) {
+      .sidebar { padding: 19px 14px 28px; }
+      .stage { padding: 14px 8px 40px; }
+      .preview-shell { padding: 7px; border-radius: 18px; }
+      canvas { border-radius: 11px; }
+      .hint { padding: 0 10px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div>
+          <h1>FOCUS FRAME</h1>
+          <p>사진은 그대로 두고 초점 박스를 움직여<br />원하는 부분만 선명하게 만드는 편집기</p>
+        </div>
+        <span class="live-dot" aria-hidden="true"></span>
+      </div>
+
+      <label class="upload">
+        <strong>일러스트 업로드</strong>
+        <span>JPG · PNG · WEBP</span>
+        <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" />
+      </label>
+
+      <section class="section">
+        <div class="section-title">OUTPUT</div>
+        <div class="two-col">
+          <div class="control">
+            <div class="label-row"><span>이미지 비율</span></div>
+            <select id="ratioSelect">
+              <option value="square">정사각형 1:1</option>
+              <option value="portrait">세로형 4:5</option>
+              <option value="landscape">가로형 16:9</option>
+            </select>
+          </div>
+          <div class="control">
+            <div class="label-row"><span>해상도</span></div>
+            <select id="resolutionSelect">
+              <option value="1080">1080 px</option>
+              <option value="1440">1440 px</option>
+              <option value="2160">2160 px</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">FOCUS BOXES</div>
+
+        <div class="control">
+          <div class="label-row"><span>초점 박스 수</span><span class="value" id="focusCountValue">1개</span></div>
+          <select id="focusCount">
+            <option value="1">1개</option>
+            <option value="2">2개</option>
+            <option value="3">3개</option>
+            <option value="4">4개</option>
+            <option value="5">5개</option>
+            <option value="6">6개</option>
+          </select>
+        </div>
+
+        <div id="focusCards" class="focus-list"></div>
+
+        <div class="control">
+          <div class="label-row"><span>바깥 블러</span><span class="value" id="blurValue">14px</span></div>
+          <input id="blur" type="range" min="0" max="45" value="14" />
+        </div>
+
+        <div class="control">
+          <div class="label-row"><span>바깥 어둡기</span><span class="value" id="dimValue">20%</span></div>
+          <input id="dim" type="range" min="0" max="75" value="20" />
+        </div>
+
+        <div class="control">
+          <div class="label-row"><span>바깥 채도</span><span class="value" id="saturationValue">78%</span></div>
+          <input id="saturation" type="range" min="0" max="130" value="78" />
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">CAMERA GUIDE</div>
+
+        <div class="two-col">
+          <div class="control">
+            <div class="label-row"><span>가이드 형태</span></div>
+            <select id="guideStyle">
+              <option value="corners">카메라 코너</option>
+              <option value="box">전체 사각형</option>
+              <option value="none">가이드 없음</option>
+            </select>
+          </div>
+          <div class="control">
+            <div class="label-row"><span>가이드 색상</span></div>
+            <input id="guideColor" type="color" value="#ffffff" />
+          </div>
+        </div>
+
+        <div class="control">
+          <div class="label-row"><span>선 굵기</span><span class="value" id="lineWidthValue">3px</span></div>
+          <input id="lineWidth" type="range" min="1" max="8" value="3" />
+        </div>
+
+        <div class="control">
+          <div class="label-row"><span>십자선 크기</span><span class="value" id="crossSizeValue">28px</span></div>
+          <input id="crossSize" type="range" min="8" max="70" value="28" />
+        </div>
+
+        <div class="toggle-row">
+          <span>화면 모서리 마커</span>
+          <label class="switch">
+            <input id="screenCorners" type="checkbox" checked />
+            <span></span>
+          </label>
+        </div>
+
+        <div class="control">
+          <div class="label-row"><span>모서리 마커 길이</span><span class="value" id="screenCornerSizeValue">46px</span></div>
+          <input id="screenCornerSize" type="range" min="18" max="100" value="46" />
+        </div>
+
+        <div class="toggle-row">
+          <span>9분할 구도선</span>
+          <label class="switch">
+            <input id="thirdsGrid" type="checkbox" />
+            <span></span>
+          </label>
+        </div>
+
+        <div class="control">
+          <div class="label-row"><span>구도선 투명도</span><span class="value" id="gridOpacityValue">24%</span></div>
+          <input id="gridOpacity" type="range" min="5" max="80" value="24" />
+        </div>
+
+        <div class="toggle-row">
+          <span>저장 이미지에 가이드 포함</span>
+          <label class="switch">
+            <input id="includeGuide" type="checkbox" checked />
+            <span></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">IMAGE & EXPORT</div>
+
+        <div class="control">
+          <div class="label-row"><span>이미지 확대</span><span class="value" id="zoomValue">100%</span></div>
+          <input id="zoom" type="range" min="100" max="300" value="100" />
+        </div>
+
+        <div class="button-grid">
+          <button id="autoArrange" type="button">박스 자동 배치</button>
+          <button id="resetZoom" type="button">확대 초기화</button>
+          <button id="resetAll" type="button">전체 초기화</button>
+          <button id="downloadBtn" type="button" class="primary">PNG 이미지 저장</button>
+          <button id="shareBtn" type="button">모바일 공유 / 저장</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="stage">
+      <div class="workspace">
+        <div class="preview-shell">
+          <canvas id="canvas" width="1080" height="1080" aria-label="초점 편집 미리보기"></canvas>
+        </div>
+        <div class="hint">
+          <span><span class="kbd">DRAG</span> 초점 박스 이동</span>
+          <span>·</span>
+          <span>왼쪽 각 블럭에서 위치·크기 개별 조정</span>
+          <span>·</span>
+          <span><span class="kbd">ARROW</span> 최근 선택 박스 미세 조정</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const imageInput = document.getElementById('imageInput');
+      const ratioSelect = document.getElementById('ratioSelect');
+      const resolutionSelect = document.getElementById('resolutionSelect');
+      const focusCount = document.getElementById('focusCount');
+      const focusCards = document.getElementById('focusCards');
+      const toast = document.getElementById('toast');
+
+      const controls = {
+        blur: document.getElementById('blur'),
+        dim: document.getElementById('dim'),
+        saturation: document.getElementById('saturation'),
+        guideStyle: document.getElementById('guideStyle'),
+        guideColor: document.getElementById('guideColor'),
+        lineWidth: document.getElementById('lineWidth'),
+        crossSize: document.getElementById('crossSize'),
+        screenCorners: document.getElementById('screenCorners'),
+        screenCornerSize: document.getElementById('screenCornerSize'),
+        thirdsGrid: document.getElementById('thirdsGrid'),
+        gridOpacity: document.getElementById('gridOpacity'),
+        includeGuide: document.getElementById('includeGuide'),
+        zoom: document.getElementById('zoom')
+      };
+
+      const defaultPositions = [
+        [0.5, 0.5],
+        [0.34, 0.36],
+        [0.66, 0.64],
+        [0.66, 0.36],
+        [0.34, 0.64],
+        [0.5, 0.25]
+      ];
+
+      const state = {
+        image: null,
+        imageName: 'focus-frame',
+        focusBoxes: [{ x: 0.5, y: 0.5, size: 0.34 }],
+        activeFocusIndex: 0,
+        dragging: false,
+        dragFocusIndex: -1,
+        startClientX: 0,
+        startClientY: 0,
+        startFocusX: 0,
+        startFocusY: 0,
+        renderQueued: false
+      };
+
+      const valueBindings = [
+        ['blur', 'blurValue', v => `${v}px`],
+        ['dim', 'dimValue', v => `${v}%`],
+        ['saturation', 'saturationValue', v => `${v}%`],
+        ['lineWidth', 'lineWidthValue', v => `${v}px`],
+        ['crossSize', 'crossSizeValue', v => `${v}px`],
+        ['screenCornerSize', 'screenCornerSizeValue', v => `${v}px`],
+        ['gridOpacity', 'gridOpacityValue', v => `${v}%`],
+        ['zoom', 'zoomValue', v => `${v}%`]
+      ];
+
+      valueBindings.forEach(([id, valueId, format]) => {
+        const input = document.getElementById(id);
+        const value = document.getElementById(valueId);
+        input.addEventListener('input', () => {
+          value.textContent = format(input.value);
+          queueRender();
+        });
+      });
+
+      ['guideStyle', 'guideColor', 'includeGuide', 'screenCorners', 'thirdsGrid'].forEach(id => {
+        document.getElementById(id).addEventListener('input', queueRender);
+        document.getElementById(id).addEventListener('change', queueRender);
+      });
+
+      focusCount.addEventListener('change', () => {
+        setFocusCount(Number(focusCount.value));
+      });
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => toast.classList.remove('show'), 1800);
+      }
+
+      function renderFocusCards() {
+        focusCards.innerHTML = '';
+        state.focusBoxes.forEach((box, index) => {
+          const card = document.createElement('article');
+          card.className = `focus-card${index === state.activeFocusIndex ? ' active' : ''}`;
+          card.dataset.focusIndex = String(index);
+          card.innerHTML = `
+            <div class="focus-card-head">
+              <div class="focus-card-title">
+                <span class="focus-card-number">${String(index + 1).padStart(2, '0')}</span>
+                <span>FOCUS BOX ${index + 1}</span>
+              </div>
+              <button type="button" class="mini-btn" data-action="center">중앙</button>
+            </div>
+            <div class="focus-card-position" data-role="position">X ${Math.round(box.x * 100)} · Y ${Math.round(box.y * 100)}</div>
+            <div class="control">
+              <div class="label-row"><span>박스 크기</span><span class="value" data-value="size">${Math.round(box.size * 100)}%</span></div>
+              <input data-control="size" type="range" min="8" max="88" value="${Math.round(box.size * 100)}" />
+            </div>
+            <div class="two-col">
+              <div class="control">
+                <div class="label-row"><span>가로 위치</span><span class="value" data-value="x">${Math.round(box.x * 100)}</span></div>
+                <input data-control="x" type="range" min="0" max="100" value="${Math.round(box.x * 100)}" />
+              </div>
+              <div class="control">
+                <div class="label-row"><span>세로 위치</span><span class="value" data-value="y">${Math.round(box.y * 100)}</span></div>
+                <input data-control="y" type="range" min="0" max="100" value="${Math.round(box.y * 100)}" />
+              </div>
+            </div>
+          `;
+
+          card.addEventListener('pointerdown', event => {
+            if (event.target.closest('input, button')) return;
+            setActiveFocus(index);
+          });
+
+          card.querySelector('[data-action="center"]').addEventListener('click', () => {
+            box.x = 0.5;
+            box.y = 0.5;
+            clampFocusBox(box);
+            setActiveFocus(index);
+            syncFocusCards();
+            queueRender();
+          });
+
+          card.querySelectorAll('[data-control]').forEach(input => {
+            input.addEventListener('input', () => {
+              setActiveFocus(index, false);
+              const kind = input.dataset.control;
+              if (kind === 'size') box.size = Number(input.value) / 100;
+              if (kind === 'x') box.x = Number(input.value) / 100;
+              if (kind === 'y') box.y = Number(input.value) / 100;
+              clampFocusBox(box);
+              syncFocusCards();
+              queueRender();
+            });
+          });
+
+          focusCards.appendChild(card);
+        });
+        document.getElementById('focusCountValue').textContent = `${state.focusBoxes.length}개`;
+      }
+
+      function syncFocusCards() {
+        [...focusCards.children].forEach((card, index) => {
+          const box = state.focusBoxes[index];
+          if (!box) return;
+          card.classList.toggle('active', index === state.activeFocusIndex);
+          const size = Math.round(box.size * 100);
+          const x = Math.round(box.x * 100);
+          const y = Math.round(box.y * 100);
+          card.querySelector('[data-control="size"]').value = size;
+          card.querySelector('[data-control="x"]').value = x;
+          card.querySelector('[data-control="y"]').value = y;
+          card.querySelector('[data-value="size"]').textContent = `${size}%`;
+          card.querySelector('[data-value="x"]').textContent = x;
+          card.querySelector('[data-value="y"]').textContent = y;
+          card.querySelector('[data-role="position"]').textContent = `X ${x} · Y ${y}`;
+        });
+        focusCount.value = String(state.focusBoxes.length);
+        document.getElementById('focusCountValue').textContent = `${state.focusBoxes.length}개`;
+      }
+
+      function setActiveFocus(index, shouldRender = true) {
+        state.activeFocusIndex = Math.min(state.focusBoxes.length - 1, Math.max(0, index));
+        syncFocusCards();
+        if (shouldRender) queueRender();
+      }
+
+      function clampFocusBox(box) {
+        const width = canvas.width || 1;
+        const height = canvas.height || 1;
+        const pixelSize = Math.min(width, height) * box.size;
+        const marginX = pixelSize / (2 * width);
+        const marginY = pixelSize / (2 * height);
+        box.x = Math.min(1 - marginX, Math.max(marginX, box.x));
+        box.y = Math.min(1 - marginY, Math.max(marginY, box.y));
+      }
+
+      function setFocusCount(count) {
+        count = Math.min(6, Math.max(1, count));
+        const currentSize = state.focusBoxes[state.activeFocusIndex]?.size ?? 0.34;
+        while (state.focusBoxes.length < count) {
+          const index = state.focusBoxes.length;
+          const [x, y] = defaultPositions[index] || [0.5, 0.5];
+          const box = { x, y, size: Math.min(currentSize, 0.34) };
+          clampFocusBox(box);
+          state.focusBoxes.push(box);
+        }
+        if (state.focusBoxes.length > count) state.focusBoxes.length = count;
+        state.activeFocusIndex = Math.min(state.activeFocusIndex, count - 1);
+        renderFocusCards();
+        queueRender();
+      }
+
+      function autoArrangeBoxes() {
+        const count = state.focusBoxes.length;
+        const layouts = {
+          1: [[0.5, 0.5]],
+          2: [[0.35, 0.5], [0.65, 0.5]],
+          3: [[0.5, 0.3], [0.34, 0.65], [0.66, 0.65]],
+          4: [[0.34, 0.34], [0.66, 0.34], [0.34, 0.66], [0.66, 0.66]],
+          5: [[0.5, 0.24], [0.3, 0.48], [0.7, 0.48], [0.38, 0.75], [0.62, 0.75]],
+          6: [[0.3, 0.28], [0.5, 0.28], [0.7, 0.28], [0.3, 0.7], [0.5, 0.7], [0.7, 0.7]]
+        };
+        layouts[count].forEach(([x, y], index) => {
+          state.focusBoxes[index].x = x;
+          state.focusBoxes[index].y = y;
+          clampFocusBox(state.focusBoxes[index]);
+        });
+        syncFocusCards();
+        queueRender();
+      }
+
+      function resetFocusBoxes() {
+        state.focusBoxes.forEach((box, index) => {
+          const [x, y] = defaultPositions[index] || [0.5, 0.5];
+          box.x = x;
+          box.y = y;
+          box.size = 0.34;
+          clampFocusBox(box);
+        });
+        state.activeFocusIndex = 0;
+        renderFocusCards();
+      }
+
+      function setCanvasSize() {
+        const base = Number(resolutionSelect.value);
+        const ratio = ratioSelect.value;
+        let width = base;
+        let height = base;
+
+        if (ratio === 'portrait') height = Math.round(base * 1.25);
+        if (ratio === 'landscape') height = Math.round(base * 9 / 16);
+
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.aspectRatio = `${width} / ${height}`;
+        canvas.closest('.preview-shell').style.setProperty('--preview-ratio', String(width / height));
+        state.focusBoxes.forEach(clampFocusBox);
+        syncFocusCards();
+        queueRender();
+      }
+
+      ratioSelect.addEventListener('change', setCanvasSize);
+      resolutionSelect.addEventListener('change', setCanvasSize);
+
+      imageInput.addEventListener('change', event => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          state.image = img;
+          state.imageName = file.name.replace(/\.[^.]+$/, '') || 'focus-frame';
+          resetFocusBoxes();
+          controls.zoom.value = 100;
+          document.getElementById('zoomValue').textContent = '100%';
+          queueRender();
+          showToast('일러스트를 불러왔어요. 박스를 직접 움직여 보세요.');
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          showToast('이미지를 불러오지 못했어요.');
+        };
+        img.src = url;
+      });
+
+      function queueRender() {
+        if (state.renderQueued) return;
+        state.renderQueued = true;
+        requestAnimationFrame(() => {
+          state.renderQueued = false;
+          render(true, true);
+        });
+      }
+
+      function drawPlaceholder(targetCtx, width, height) {
+        const gradient = targetCtx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, '#2e323b');
+        gradient.addColorStop(0.5, '#171a20');
+        gradient.addColorStop(1, '#0d0f13');
+        targetCtx.fillStyle = gradient;
+        targetCtx.fillRect(0, 0, width, height);
+
+        targetCtx.save();
+        targetCtx.globalAlpha = 0.18;
+        targetCtx.fillStyle = '#ffffff';
+        targetCtx.beginPath();
+        targetCtx.arc(width * 0.72, height * 0.22, Math.min(width, height) * 0.22, 0, Math.PI * 2);
+        targetCtx.fill();
+        targetCtx.beginPath();
+        targetCtx.arc(width * 0.28, height * 0.78, Math.min(width, height) * 0.3, 0, Math.PI * 2);
+        targetCtx.fill();
+        targetCtx.restore();
+
+        targetCtx.textAlign = 'center';
+        targetCtx.fillStyle = 'rgba(255,255,255,0.86)';
+        targetCtx.font = `700 ${Math.max(18, width * 0.026)}px system-ui, sans-serif`;
+        targetCtx.fillText('ILLUSTRATION PREVIEW', width / 2, height / 2 - 8);
+        targetCtx.fillStyle = 'rgba(255,255,255,0.48)';
+        targetCtx.font = `400 ${Math.max(12, width * 0.014)}px system-ui, sans-serif`;
+        targetCtx.fillText('왼쪽에서 이미지를 업로드해 주세요', width / 2, height / 2 + 26);
+      }
+
+      function getImageGeometry(width, height) {
+        if (!state.image) return null;
+        const baseScale = Math.max(width / state.image.naturalWidth, height / state.image.naturalHeight);
+        const zoom = Number(controls.zoom.value) / 100;
+        const scale = baseScale * zoom;
+        const drawWidth = state.image.naturalWidth * scale;
+        const drawHeight = state.image.naturalHeight * scale;
+        const x = (width - drawWidth) / 2;
+        const y = (height - drawHeight) / 2;
+        return { x, y, drawWidth, drawHeight };
+      }
+
+      function drawImageLayer(targetCtx, width, height, filter = 'none') {
+        const geometry = getImageGeometry(width, height);
+        if (!geometry) return;
+        targetCtx.save();
+        targetCtx.filter = filter;
+        targetCtx.drawImage(state.image, geometry.x, geometry.y, geometry.drawWidth, geometry.drawHeight);
+        targetCtx.restore();
+      }
+
+      function getFocusRect(width, height, index) {
+        const box = state.focusBoxes[index];
+        const size = Math.min(width, height) * box.size;
+        const marginX = size / (2 * width);
+        const marginY = size / (2 * height);
+        const x = Math.min(1 - marginX, Math.max(marginX, box.x));
+        const y = Math.min(1 - marginY, Math.max(marginY, box.y));
+        return { size, cx: x * width, cy: y * height };
+      }
+
+      function drawSingleGuide(targetCtx, width, height, index, previewMode) {
+        const style = controls.guideStyle.value;
+        if (style === 'none') return;
+
+        const { size, cx, cy } = getFocusRect(width, height, index);
+        const x = cx - size / 2;
+        const y = cy - size / 2;
+        const lineWidth = Number(controls.lineWidth.value) * (width / 1080);
+        const crossSize = Number(controls.crossSize.value) * (width / 1080);
+        const corner = Math.max(size * 0.14, lineWidth * 5);
+        const isActive = index === state.activeFocusIndex;
+
+        targetCtx.save();
+        targetCtx.globalAlpha = previewMode && !isActive ? 0.62 : 1;
+        targetCtx.strokeStyle = controls.guideColor.value;
+        targetCtx.lineWidth = lineWidth;
+        targetCtx.lineCap = 'square';
+        targetCtx.lineJoin = 'miter';
+        targetCtx.shadowColor = 'rgba(0,0,0,0.42)';
+        targetCtx.shadowBlur = Math.max(2, lineWidth * 1.6);
+
+        if (style === 'box') {
+          targetCtx.strokeRect(x, y, size, size);
+        } else {
+          targetCtx.beginPath();
+          targetCtx.moveTo(x, y + corner); targetCtx.lineTo(x, y); targetCtx.lineTo(x + corner, y);
+          targetCtx.moveTo(x + size - corner, y); targetCtx.lineTo(x + size, y); targetCtx.lineTo(x + size, y + corner);
+          targetCtx.moveTo(x + size, y + size - corner); targetCtx.lineTo(x + size, y + size); targetCtx.lineTo(x + size - corner, y + size);
+          targetCtx.moveTo(x + corner, y + size); targetCtx.lineTo(x, y + size); targetCtx.lineTo(x, y + size - corner);
+          targetCtx.stroke();
+        }
+
+        targetCtx.beginPath();
+        targetCtx.moveTo(cx - crossSize, cy);
+        targetCtx.lineTo(cx + crossSize, cy);
+        targetCtx.moveTo(cx, cy - crossSize);
+        targetCtx.lineTo(cx, cy + crossSize);
+        targetCtx.stroke();
+
+        if (previewMode && isActive && state.focusBoxes.length > 1) {
+          const badgeRadius = Math.max(11, 15 * (width / 1080));
+          const badgeX = x + badgeRadius * 0.9;
+          const badgeY = Math.max(badgeRadius + 4, y - badgeRadius * 0.3);
+          targetCtx.shadowBlur = Math.max(3, lineWidth * 2);
+          targetCtx.fillStyle = controls.guideColor.value;
+          targetCtx.beginPath();
+          targetCtx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2);
+          targetCtx.fill();
+          targetCtx.shadowBlur = 0;
+          targetCtx.fillStyle = '#101216';
+          targetCtx.textAlign = 'center';
+          targetCtx.textBaseline = 'middle';
+          targetCtx.font = `700 ${Math.max(10, 12 * (width / 1080))}px system-ui, sans-serif`;
+          targetCtx.fillText(String(index + 1), badgeX, badgeY + 0.5);
+        }
+
+        targetCtx.restore();
+      }
+
+      function drawScreenGuides(targetCtx, width, height) {
+        const color = controls.guideColor.value;
+        const baseLineWidth = Number(controls.lineWidth.value) * (width / 1080);
+        const inset = Math.min(width, height) * 0.035;
+
+        if (controls.thirdsGrid.checked) {
+          targetCtx.save();
+          targetCtx.strokeStyle = color;
+          targetCtx.globalAlpha = Number(controls.gridOpacity.value) / 100;
+          targetCtx.lineWidth = Math.max(0.7, baseLineWidth * 0.42);
+          targetCtx.beginPath();
+          targetCtx.moveTo(width / 3, inset);
+          targetCtx.lineTo(width / 3, height - inset);
+          targetCtx.moveTo(width * 2 / 3, inset);
+          targetCtx.lineTo(width * 2 / 3, height - inset);
+          targetCtx.moveTo(inset, height / 3);
+          targetCtx.lineTo(width - inset, height / 3);
+          targetCtx.moveTo(inset, height * 2 / 3);
+          targetCtx.lineTo(width - inset, height * 2 / 3);
+          targetCtx.stroke();
+          targetCtx.restore();
+        }
+
+        if (controls.screenCorners.checked) {
+          const length = Number(controls.screenCornerSize.value) * (width / 1080);
+          const lineWidth = Math.max(1, baseLineWidth * 0.82);
+          targetCtx.save();
+          targetCtx.strokeStyle = color;
+          targetCtx.lineWidth = lineWidth;
+          targetCtx.lineCap = 'square';
+          targetCtx.lineJoin = 'miter';
+          targetCtx.shadowColor = 'rgba(0,0,0,0.4)';
+          targetCtx.shadowBlur = Math.max(2, lineWidth * 1.5);
+          targetCtx.beginPath();
+          targetCtx.moveTo(inset, inset + length); targetCtx.lineTo(inset, inset); targetCtx.lineTo(inset + length, inset);
+          targetCtx.moveTo(width - inset - length, inset); targetCtx.lineTo(width - inset, inset); targetCtx.lineTo(width - inset, inset + length);
+          targetCtx.moveTo(width - inset, height - inset - length); targetCtx.lineTo(width - inset, height - inset); targetCtx.lineTo(width - inset - length, height - inset);
+          targetCtx.moveTo(inset + length, height - inset); targetCtx.lineTo(inset, height - inset); targetCtx.lineTo(inset, height - inset - length);
+          targetCtx.stroke();
+          targetCtx.restore();
+        }
+      }
+
+      function drawGuides(targetCtx, width, height, previewMode) {
+        drawScreenGuides(targetCtx, width, height);
+        state.focusBoxes.forEach((_, index) => drawSingleGuide(targetCtx, width, height, index, previewMode));
+      }
+
+      function render(includeGuide, previewMode = false) {
+        const width = canvas.width;
+        const height = canvas.height;
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = '#111318';
+        ctx.fillRect(0, 0, width, height);
+
+        if (!state.image) {
+          drawPlaceholder(ctx, width, height);
+          state.focusBoxes.forEach((_, index) => {
+            const { size, cx, cy } = getFocusRect(width, height, index);
+            ctx.save();
+            ctx.fillStyle = 'rgba(255,255,255,0.03)';
+            ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
+            ctx.restore();
+          });
+          if (includeGuide) drawGuides(ctx, width, height, previewMode);
+          return;
+        }
+
+        const blur = Number(controls.blur.value) * (width / 1080);
+        const saturation = Number(controls.saturation.value) / 100;
+        const dim = Number(controls.dim.value) / 100;
+        drawImageLayer(ctx, width, height, `blur(${blur}px) saturate(${saturation})`);
+
+        if (dim > 0) {
+          ctx.fillStyle = `rgba(0,0,0,${dim})`;
+          ctx.fillRect(0, 0, width, height);
+        }
+
+        ctx.save();
+        ctx.beginPath();
+        state.focusBoxes.forEach((_, index) => {
+          const { size, cx, cy } = getFocusRect(width, height, index);
+          ctx.rect(cx - size / 2, cy - size / 2, size, size);
+        });
+        ctx.clip();
+        drawImageLayer(ctx, width, height, 'none');
+        ctx.restore();
+
+        if (includeGuide) drawGuides(ctx, width, height, previewMode);
+      }
+
+      function eventToCanvasPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (event.clientX - rect.left) * (canvas.width / rect.width),
+          y: (event.clientY - rect.top) * (canvas.height / rect.height)
+        };
+      }
+
+      function hitTestFocus(point) {
+        for (let index = state.focusBoxes.length - 1; index >= 0; index -= 1) {
+          const { size, cx, cy } = getFocusRect(canvas.width, canvas.height, index);
+          if (
+            point.x >= cx - size / 2 && point.x <= cx + size / 2 &&
+            point.y >= cy - size / 2 && point.y <= cy + size / 2
+          ) return index;
+        }
+        return -1;
+      }
+
+      function moveBoxToPoint(index, point) {
+        const box = state.focusBoxes[index];
+        box.x = point.x / canvas.width;
+        box.y = point.y / canvas.height;
+        clampFocusBox(box);
+      }
+
+      canvas.addEventListener('pointerdown', event => {
+        canvas.setPointerCapture(event.pointerId);
+        const point = eventToCanvasPoint(event);
+        let index = hitTestFocus(point);
+
+        if (index < 0) {
+          index = state.activeFocusIndex;
+          moveBoxToPoint(index, point);
+        }
+
+        setActiveFocus(index);
+        state.dragging = true;
+        state.dragFocusIndex = index;
+        state.startClientX = event.clientX;
+        state.startClientY = event.clientY;
+        state.startFocusX = state.focusBoxes[index].x;
+        state.startFocusY = state.focusBoxes[index].y;
+        canvas.style.cursor = 'grabbing';
+        queueRender();
+      });
+
+      canvas.addEventListener('pointermove', event => {
+        if (!state.dragging || state.dragFocusIndex < 0) {
+          const point = eventToCanvasPoint(event);
+          canvas.style.cursor = hitTestFocus(point) >= 0 ? 'grab' : 'crosshair';
+          return;
+        }
+        const rect = canvas.getBoundingClientRect();
+        const box = state.focusBoxes[state.dragFocusIndex];
+        box.x = state.startFocusX + (event.clientX - state.startClientX) / rect.width;
+        box.y = state.startFocusY + (event.clientY - state.startClientY) / rect.height;
+        clampFocusBox(box);
+        syncFocusCards();
+        queueRender();
+      });
+
+      function finishPointer(event) {
+        state.dragging = false;
+        state.dragFocusIndex = -1;
+        canvas.style.cursor = 'crosshair';
+        try { canvas.releasePointerCapture(event.pointerId); } catch (_) {}
+      }
+
+      canvas.addEventListener('pointerup', finishPointer);
+      canvas.addEventListener('pointercancel', finishPointer);
+
+      canvas.addEventListener('wheel', event => {
+        if (!state.image) return;
+        event.preventDefault();
+        const current = Number(controls.zoom.value);
+        const next = Math.min(300, Math.max(100, current + (event.deltaY > 0 ? -5 : 5)));
+        controls.zoom.value = next;
+        document.getElementById('zoomValue').textContent = `${next}%`;
+        queueRender();
+      }, { passive: false });
+
+      document.addEventListener('keydown', event => {
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+        const active = state.focusBoxes[state.activeFocusIndex];
+        if (!active) return;
+        const step = event.shiftKey ? 0.02 : 0.006;
+        let changed = true;
+        if (event.key === 'ArrowLeft') active.x -= step;
+        else if (event.key === 'ArrowRight') active.x += step;
+        else if (event.key === 'ArrowUp') active.y -= step;
+        else if (event.key === 'ArrowDown') active.y += step;
+        else changed = false;
+
+        if (changed) {
+          event.preventDefault();
+          clampFocusBox(active);
+          syncFocusCards();
+          queueRender();
+        }
+      });
+
+      document.getElementById('autoArrange').addEventListener('click', () => {
+        autoArrangeBoxes();
+        showToast('초점 박스를 보기 좋게 배치했어요.');
+      });
+
+      document.getElementById('resetZoom').addEventListener('click', () => {
+        controls.zoom.value = 100;
+        document.getElementById('zoomValue').textContent = '100%';
+        queueRender();
+      });
+
+      document.getElementById('resetAll').addEventListener('click', () => {
+        state.focusBoxes = [{ x: 0.5, y: 0.5, size: 0.34 }];
+        state.activeFocusIndex = 0;
+        controls.blur.value = 14;
+        controls.dim.value = 20;
+        controls.saturation.value = 78;
+        controls.guideStyle.value = 'corners';
+        controls.guideColor.value = '#ffffff';
+        controls.lineWidth.value = 3;
+        controls.crossSize.value = 28;
+        controls.screenCorners.checked = true;
+        controls.screenCornerSize.value = 46;
+        controls.thirdsGrid.checked = false;
+        controls.gridOpacity.value = 24;
+        controls.includeGuide.checked = true;
+        controls.zoom.value = 100;
+        valueBindings.forEach(([id, valueId, format]) => {
+          document.getElementById(valueId).textContent = format(document.getElementById(id).value);
+        });
+        renderFocusCards();
+        queueRender();
+        showToast('설정을 초기화했어요.');
+      });
+
+      async function makeBlob() {
+        const includeGuide = controls.includeGuide.checked;
+        render(includeGuide, false);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        render(true, true);
+        return blob;
+      }
+
+      document.getElementById('downloadBtn').addEventListener('click', async () => {
+        if (!state.image) {
+          showToast('먼저 일러스트를 업로드해 주세요.');
+          return;
+        }
+        const blob = await makeBlob();
+        if (!blob) {
+          showToast('이미지 생성에 실패했어요.');
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${state.imageName}-focus.png`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        showToast('PNG 저장을 시작했어요.');
+      });
+
+      document.getElementById('shareBtn').addEventListener('click', async () => {
+        if (!state.image) {
+          showToast('먼저 일러스트를 업로드해 주세요.');
+          return;
+        }
+        const blob = await makeBlob();
+        if (!blob) return;
+        const file = new File([blob], `${state.imageName}-focus.png`, { type: 'image/png' });
+
+        if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+          try {
+            await navigator.share({ files: [file], title: 'Focus Frame' });
+          } catch (error) {
+            if (error?.name !== 'AbortError') showToast('공유 창을 열지 못했어요.');
+          }
+        } else {
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank', 'noopener,noreferrer');
+          setTimeout(() => URL.revokeObjectURL(url), 15000);
+          showToast('새 탭에서 길게 눌러 저장해 주세요.');
+        }
+      });
+
+      renderFocusCards();
+      setCanvasSize();
+    })();
+  </script>
+</body>
+</html>
