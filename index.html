@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#101216" />
-  <title>Focus Frame V5.8 — 이미지 초점 편집기</title>
+  <title>FOCUS FRAME</title>
   <style>
     :root {
       color-scheme: dark;
@@ -70,12 +70,6 @@
       font-weight: 730;
     }
 
-    .brand p {
-      margin: 7px 0 0;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.45;
-    }
 
     .live-dot {
       width: 9px;
@@ -92,17 +86,6 @@
       gap: 10px;
     }
 
-    .version-badge {
-      padding: 5px 8px;
-      border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 999px;
-      background: rgba(255,255,255,0.07);
-      color: #d9dce5;
-      font-size: 9px;
-      font-weight: 750;
-      letter-spacing: 0.08em;
-      white-space: nowrap;
-    }
 
     .upload {
       display: block;
@@ -578,10 +561,8 @@
       <div class="brand">
         <div>
           <h1>FOCUS FRAME</h1>
-          <p>초점 박스와 일러스트 위치를 따로 움직여<br />원하는 장면을 만드는 이미지 편집기</p>
         </div>
         <div class="brand-tools">
-          <span class="version-badge">V5.8 · PERFORMANCE</span>
           <span class="live-dot" aria-hidden="true"></span>
         </div>
       </div>
@@ -760,8 +741,16 @@
           </div>
           <div class="control">
             <div class="label-row"><span>커미션주</span></div>
-            <input id="commissioner" type="text" value="Commissioned by @user" placeholder="커미션주 / 의뢰자" />
+            <input id="commissioner" type="text" value="" placeholder="커미션주 / 의뢰자" />
           </div>
+        </div>
+
+        <div class="toggle-row">
+          <span>커미션주 표시</span>
+          <label class="switch">
+            <input id="showCommissioner" type="checkbox" />
+            <span></span>
+          </label>
         </div>
 
         <div class="control">
@@ -769,7 +758,6 @@
           <input id="hudTextScale" type="range" min="70" max="145" value="100" />
         </div>
 
-        <div class="text-mini">REC는 좌상단 모서리 가까이, 사진 제목과 날짜는 좌하단, 커미션주는 우하단에 표시됩니다. 하단 중앙에는 MADE BY @BAKHA_cm이 작게 들어갑니다. 빈칸으로 두면 해당 문구는 숨겨집니다.</div>
       </section>
 
       <section class="section">
@@ -867,6 +855,7 @@
         hudTime: document.getElementById('hudTime'),
         photoTitle: document.getElementById('photoTitle'),
         commissioner: document.getElementById('commissioner'),
+        showCommissioner: document.getElementById('showCommissioner'),
         hudTextScale: document.getElementById('hudTextScale')
       };
 
@@ -878,8 +867,6 @@
         [0.34, 0.64],
         [0.5, 0.25]
       ];
-
-      const APP_VERSION = '5.8.0';
 
       const state = {
         image: null,
@@ -938,7 +925,7 @@
         });
       });
 
-      ['guideStyle', 'guideColor', 'includeGuide', 'screenCorners', 'thirdsGrid', 'showHud', 'imageMoveMode'].forEach(id => {
+      ['guideStyle', 'guideColor', 'includeGuide', 'screenCorners', 'thirdsGrid', 'showHud', 'showCommissioner', 'imageMoveMode'].forEach(id => {
         document.getElementById(id).addEventListener('input', queueRender);
         document.getElementById(id).addEventListener('change', queueRender);
       });
@@ -1635,7 +1622,6 @@
         const rightEdgeX = hasScreenCorners ? width - screenInset - edgeGap : width - basePadX * 0.62;
 
         const title = controls.photoTitle.value.trim();
-        const commissioner = controls.commissioner.value.trim();
         const status = controls.hudStatus.value.trim();
         const meta = controls.hudMeta.value.trim();
         const time = controls.hudTime.value.trim();
@@ -1742,36 +1728,38 @@
           targetCtx.globalAlpha = 0.96;
         }
 
-        if (commissioner) {
-          drawFittedHudText(
-            targetCtx,
-            commissioner,
-            rightEdgeX,
-            bottomSubY,
-            edgeZoneWidth,
-            { align: 'right', weight: 500, size: bottomSubFont, minSize: Math.max(9, bottomSubFont * 0.72) }
-          );
-        }
-
         targetCtx.restore();
       }
 
-      function drawCreatorCredit(targetCtx, width, height) {
-        const color = controls.guideColor.value;
+      function drawCommissioner(targetCtx, width, height) {
+        if (!controls.showCommissioner.checked) return;
+        const commissioner = controls.commissioner.value.trim();
+        if (!commissioner) return;
+
+        const scale = Number(controls.hudTextScale.value) / 100;
         const minSide = Math.min(width, height);
-        const inset = minSide * 0.035;
-        const fontSize = Math.max(8, width * 0.0085);
-        const y = height - inset - Math.max(8, fontSize * 0.75);
+        const screenInset = minSide * 0.035;
+        const basePadX = width * 0.048;
+        const basePadY = height * 0.054;
+        const edgeGap = Math.max(8, width * 0.0075);
+        const hasScreenCorners = controls.screenCorners.checked;
+        const leftEdgeX = hasScreenCorners ? screenInset + edgeGap : basePadX * 0.62;
+        const rightEdgeX = hasScreenCorners ? width - screenInset - edgeGap : width - basePadX * 0.62;
+        const bottomSubFont = Math.max(12, width * 0.0125 * scale);
+        const bottomGuideY = hasScreenCorners ? height - screenInset : height - basePadY * 0.35;
+        const bottomSubY = bottomGuideY - Math.max(12, bottomSubFont * 0.95);
+        const edgeZoneWidth = Math.max(90, (rightEdgeX - leftEdgeX) * 0.38);
 
         targetCtx.save();
-        targetCtx.fillStyle = color;
-        targetCtx.globalAlpha = 0.68;
-        targetCtx.textAlign = 'center';
+        targetCtx.fillStyle = controls.guideColor.value;
+        targetCtx.globalAlpha = 0.96;
         targetCtx.textBaseline = 'middle';
-        targetCtx.font = `600 ${fontSize}px system-ui, sans-serif`;
-        targetCtx.shadowColor = 'rgba(0,0,0,0.55)';
-        targetCtx.shadowBlur = Math.max(2, fontSize * 0.35);
-        targetCtx.fillText('MADE BY @BAKHA_cm', width / 2, y);
+        targetCtx.shadowColor = 'rgba(0,0,0,0.5)';
+        targetCtx.shadowBlur = Math.max(3, 5 * scale);
+        drawFittedHudText(
+          targetCtx, commissioner, rightEdgeX, bottomSubY, edgeZoneWidth,
+          { align: 'right', weight: 500, size: bottomSubFont, minSize: Math.max(9, bottomSubFont * 0.72) }
+        );
         targetCtx.restore();
       }
 
@@ -1796,7 +1784,7 @@
           if (!previewMode || !state.dragging) drawGrain(targetCtx, width, height);
           if (includeGuide) drawGuides(targetCtx, width, height, previewMode);
           drawHud(targetCtx, width, height);
-          drawCreatorCredit(targetCtx, width, height);
+          drawCommissioner(targetCtx, width, height);
           return;
         }
 
@@ -1820,7 +1808,7 @@
         if (!previewMode || !state.dragging) drawGrain(targetCtx, width, height);
         if (includeGuide) drawGuides(targetCtx, width, height, previewMode);
         drawHud(targetCtx, width, height);
-        drawCreatorCredit(targetCtx, width, height);
+        drawCommissioner(targetCtx, width, height);
       }
 
       function render(includeGuide, previewMode = false) {
@@ -2004,7 +1992,8 @@
         controls.hudMeta.value = 'ISO 400 · 1/125 · F2.8';
         controls.hudTime.value = '2026.07.27 23:18';
         controls.photoTitle.value = state.imageName || 'Focus Cut';
-        controls.commissioner.value = 'Commissioned by @user';
+        controls.commissioner.value = '';
+        controls.showCommissioner.checked = false;
         controls.hudTextScale.value = 100;
         valueBindings.forEach(([id, valueId, format]) => updateValueLabel(id, valueId, format));
         renderFocusCards();
@@ -2185,7 +2174,6 @@
         }
       });
 
-      console.info(`[Focus Frame] v${APP_VERSION} loaded — lightweight preview rendering and full-resolution export enabled.`);
       renderFocusCards();
       valueBindings.forEach(([id, valueId, format]) => updateValueLabel(id, valueId, format));
       setCanvasSize();
