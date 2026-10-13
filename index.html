@@ -122,13 +122,44 @@
     .section-title {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
+      gap: 8px;
       margin-bottom: 13px;
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.03em;
       color: #e9eaf0;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      min-height: 20px;
     }
+
+    .section-title .new-label { margin-left: auto; }
+
+    .section-title::after {
+      content: "";
+      flex: 0 0 auto;
+      display: block;
+      width: 7px;
+      height: 7px;
+      margin: -3px 3px 0 6px;
+      border-right: 1.7px solid #b5b9c3;
+      border-bottom: 1.7px solid #b5b9c3;
+      transform: rotate(45deg);
+      transition: transform 0.18s ease;
+    }
+
+    .section-title:hover { color: #fff; }
+    .section-title:focus-visible {
+      outline: 2px solid rgba(255,255,255,0.72);
+      outline-offset: 6px;
+      border-radius: 3px;
+    }
+    .section.is-collapsed > .section-title { margin-bottom: 0; }
+    .section.is-collapsed > .section-title::after { transform: rotate(-45deg); }
+    .section-body[hidden] { display: none; }
 
     .control { min-width: 0; margin-top: 14px; }
     .control:first-of-type { margin-top: 0; }
@@ -829,6 +860,45 @@
       const focusCount = document.getElementById('focusCount');
       const focusCards = document.getElementById('focusCards');
       const toast = document.getElementById('toast');
+
+      // Each settings category can be opened or closed independently.
+      function initCollapsibleSections() {
+        document.querySelectorAll('.sidebar > .section').forEach((section, index) => {
+          const header = section.querySelector(':scope > .section-title');
+          if (!header) return;
+
+          const body = document.createElement('div');
+          body.className = 'section-body';
+          body.id = `settings-section-${index + 1}`;
+
+          // Keep existing controls and event listeners intact while grouping them.
+          while (header.nextSibling) body.appendChild(header.nextSibling);
+          section.appendChild(body);
+
+          header.setAttribute('role', 'button');
+          header.setAttribute('tabindex', '0');
+          header.setAttribute('aria-controls', body.id);
+          header.setAttribute('aria-expanded', 'true');
+          header.title = '클릭하여 접기 / 펼치기';
+
+          const toggle = () => {
+            const shouldCollapse = !section.classList.contains('is-collapsed');
+            section.classList.toggle('is-collapsed', shouldCollapse);
+            body.hidden = shouldCollapse;
+            header.setAttribute('aria-expanded', String(!shouldCollapse));
+          };
+
+          header.addEventListener('click', toggle);
+          header.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              toggle();
+            }
+          });
+        });
+      }
+
+      initCollapsibleSections();
 
       const controls = {
         blur: document.getElementById('blur'),
